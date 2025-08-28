@@ -1,3 +1,14 @@
-Write-Output "Hello from GitHub!"
-Write-Output "Today's date is: $(Get-Date)"
-Write-Output "You are running PowerShell version: $($PSVersionTable.PSVersion)"
+Write-Host "   _____ _                         _        _____   ____   " 
+Write-Host "  / ____(_)                       | |      / ____| |  _ \  " 
+Write-Host " | (___  ___ _ __ ___  _ __  _   _| |__   | |      | |_) | " 
+Write-Host "  \___ \| | '_ ' _ \| '_ \| | | | '_ \  | |      |  _ <  " 
+Write-Host "  ____) | | | | | | | |_) | |_| | |_) | | |____  | |_) | " 
+Write-Host " |_____/|_| |_| |_| .__/ \__,_|_.__/   \_____| |____/  " 
+Write-Host "                   | |                                  " 
+Write-Host "                   |_|      PC Checker                  " 
+Start-Sleep 2
+Start-Process explorer.exe "$env:WINDIR\Prefetch"
+Start-Sleep 2
+reg.exe add "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null
+reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit" /v LastKey /t REG_SZ /d "Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null
+Start-Process regedit.exe
