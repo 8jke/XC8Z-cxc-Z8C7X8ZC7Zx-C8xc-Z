@@ -1,110 +1,91 @@
-# --- Hide everything except custom text ---
+# Hide errors and startup text
 $ErrorActionPreference = "SilentlyContinue"
 $ProgressPreference = "SilentlyContinue"
 Clear-Host
 
-# --- ASCII Title ---
-Write-Host "   _____ _                         _        _____   ____   " 
-Write-Host "  / ____(_)                       | |      / ____| |  _ \  " 
-Write-Host " | (___  ___ _ __ ___  _ __  _   _| |__   | |      | |_) | " 
-Write-Host "  \___ \| | '_ ' _ \| '_ \| | | | '_ \  | |      |  _ <  " 
-Write-Host "  ____) | | | | | | | |_) | |_| | |_) | | |____  | |_) | " 
-Write-Host " |_____/|_| |_| |_| .__/ \__,_|_.__/   \_____| |____/  " 
-Write-Host "                   | |                                  " 
-Write-Host "                   |_|      PC Checker                  " 
+# --- ASCII Header ---
+Write-Host "  _________.__                         ___________________   _________ .__                   __                 " -ForegroundColor Green
+Write-Host " /   _____/|__| _____   _____   ______ \______   \_   ___ \  \_   ___ \|  |__   ____   ____ |  | __ ___________ " -ForegroundColor Green
+Write-Host " \_____  \ |  |/     \ /     \ /  ___/  |     ___/    \  \/  /    \  \/|  |  \_/ __ \_/ ___\|  |/ // __ \_  __ \" -ForegroundColor Green
+Write-Host " /        \|  |  Y Y  \  Y Y  \\___ \   |    |   \     \____ \     \___|   Y  \  ___/\  \___|    <\  ___/|  | \/" -ForegroundColor Green
+Write-Host "/_______  /|__|__|_|  /__|_|  /____  >  |____|    \______  /  \______  /___|  /\___  >\___  >__|_ \\___  >__|   " -ForegroundColor Green
+Write-Host "        \/          \/      \/     \/                    \/          \/     \/     \/     \/     \/    \/       " -ForegroundColor Green
 Write-Host ""
+Start-Sleep 2
 
-# --- Loading bar function ---
-function Show-LoadingBar {
-    param([string]$Message)
-    $bar = ""
-    for ($i = 1; $i -le 20; $i++) {
-        $bar += "#"
-        Write-Host ("$Message [$bar" + (" " * (20 - $i)) + "]") -NoNewline
-        Start-Sleep -Milliseconds 150
-        Write-Host "`r" -NoNewline
+function LoadingBar {
+    param([int]$Seconds = 5)
+    for ($i=0; $i -le 100; $i+=5) {
+        Write-Host -NoNewline ("`r[" + ("=" * ($i/5)) + (" " * ((100-$i)/5)) + "] $i%")
+        Start-Sleep -Milliseconds ($Seconds*50/20)
     }
-    Write-Host "$Message [####################] Done!"
+    Write-Host ""
 }
 
 # --- Step 1: Prefetch ---
-Show-LoadingBar "Opening Prefetch"
-Start-Process explorer.exe "$env:WINDIR\Prefetch" | Out-Null
-
-# Long instructions (forces scroll)
-Write-Host ""
-Write-Host "------------------------------------------------------"
-Write-Host "   Prefetch Viewer Instructions"
-Write-Host "------------------------------------------------------"
-Write-Host ""
-Write-Host "The Prefetch folder is a hidden system directory used"
-Write-Host "by Windows to improve performance. It stores data"
-Write-Host "about applications that you launch, so the operating"
-Write-Host "system can preload files into memory the next time."
-Write-Host ""
-Write-Host "🟢 Typical uses of Prefetch:"
-Write-Host "- Speeding up program launches."
-Write-Host "- Allowing Windows to optimize app startup."
-Write-Host "- Helping troubleshoot app startup problems."
-Write-Host ""
-Write-Host "🟠 Things to keep in mind:"
-Write-Host "- Deleting Prefetch files is usually unnecessary."
-Write-Host "- Windows will rebuild them automatically anyway."
-Write-Host "- Prefetch can give investigators forensic evidence"
-Write-Host "  of which apps were run on the system."
-Write-Host ""
-Write-Host "⚠️ Caution:"
-Write-Host "Removing Prefetch data may temporarily slow down apps."
-Write-Host "It will not free up significant disk space."
-Write-Host ""
-Write-Host "------------------------------------------------------"
-Write-Host "Scroll down to read all details."
-Read-Host "Press ENTER to continue..."
+Write-Host "`n>>> Opening Prefetch Viewer..." -ForegroundColor Green
+LoadingBar -Seconds 3
+Start-Process "explorer.exe" "C:\Windows\Prefetch"
+Write-Host "`nScroll through the Prefetch window, then press Enter to continue..." -ForegroundColor Yellow
+$null = Read-Host
 
 # --- Step 2: Regedit ---
-Show-LoadingBar "Opening Registry Editor"
-reg.exe add "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null 2>&1
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit" /v LastKey /t REG_SZ /d "Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null 2>&1
-Start-Process regedit.exe | Out-Null
+Write-Host "`n>>> Opening Registry Editor at Compatibility Assistant Store..." -ForegroundColor Green
+LoadingBar -Seconds 3
+Start-Process "regedit.exe"
+Write-Host "`nNavigate to:" -ForegroundColor Yellow
+Write-Host "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" -ForegroundColor Yellow
+Write-Host "`nScroll through the Registry Editor, then press Enter to continue..." -ForegroundColor Yellow
+$null = Read-Host
 
-# Long instructions (forces scroll)
+# --- End Card (looks like it's done) ---
 Write-Host ""
-Write-Host "------------------------------------------------------"
-Write-Host "   Registry Key Instructions"
-Write-Host "------------------------------------------------------"
-Write-Host ""
-Write-Host "You are now at the following key:"
-Write-Host "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store"
-Write-Host ""
-Write-Host "🟢 What this key does:"
-Write-Host "- It stores Compatibility Assistant data."
-Write-Host "- Windows Compatibility Assistant tracks when old"
-Write-Host "  programs have issues running on newer Windows versions."
-Write-Host "- The Store subkey records adjustments or notes about"
-Write-Host "  apps that triggered compatibility warnings."
-Write-Host ""
-Write-Host "🟠 Why it matters:"
-Write-Host "- Developers may review it when testing apps."
-Write-Host "- IT admins may check it when troubleshooting."
-Write-Host "- Security analysts may look here for persistence clues."
-Write-Host ""
-Write-Host "⚠️ Important Warning:"
-Write-Host "Editing registry entries can cause Windows instability."
-Write-Host "Only make changes if you understand the consequences."
-Write-Host "Always back up the registry before modifying keys."
-Write-Host ""
-Write-Host "------------------------------------------------------"
-Write-Host "Scroll down to review everything."
-Read-Host "Press ENTER to exit"
-
-# --- Final Exit Banner ---
-Write-Host ""
-Write-Host "**********************************************"
-Write-Host "*                                            *"
-Write-Host "*   Thanks for using Simm's PC Checker! 🎉   *"
-Write-Host "*                                            *"
-Write-Host "**********************************************"
+Write-Host "__________                ___.                 " -ForegroundColor Green
+Write-Host "\______   \___.__. ____   \_ |__ ___.__. ____  " -ForegroundColor Green
+Write-Host " |    |  _<   |  |/ __ \   | __ <   |  |/ __ \ " -ForegroundColor Green
+Write-Host " |    |   \\___  \  ___/   | \_\ \___  \  ___/ " -ForegroundColor Green
+Write-Host " |______  // ____|\___  >  |___  / ____|\___  >" -ForegroundColor Green
+Write-Host "        \/ \/         \/       \/\/         \/ " -ForegroundColor Green
 Start-Sleep 3
 
-# Close PowerShell
+# --- Fake Hack Sequence ---
+Clear-Host
+Write-Host ">>> Unauthorized access detected..." -ForegroundColor Green
+Start-Sleep 1
+Write-Host ">>> Initializing backdoor..." -ForegroundColor Green
+LoadingBar -Seconds 2
+
+$steps = @(
+    "Bypassing Windows Defender...",
+    "Extracting Chrome saved passwords...",
+    "Stealing WiFi credentials...",
+    "Collecting Discord tokens...",
+    "Searching for bank details...",
+    "Uploading Documents folder to remote server...",
+    "Wiping local event logs...",
+    "Injecting persistence mechanism...",
+    "Finalizing data exfiltration..."
+)
+
+foreach ($step in $steps) {
+    Write-Host $step -ForegroundColor Green
+    LoadingBar -Seconds 2
+    Start-Sleep 1
+}
+
+Start-Sleep 2
+Clear-Host
+
+# --- SIKE Reveal ---
+Write-Host ""
+Write-Host "███████╗██╗ ██████╗ ██╗  ██╗███████╗" -ForegroundColor Red
+Write-Host "██╔════╝██║██╔═══██╗██║ ██╔╝██╔════╝" -ForegroundColor Red
+Write-Host "███████╗██║██║   ██║█████╔╝ █████╗  " -ForegroundColor Red
+Write-Host "╚════██║██║██║   ██║██╔═██╗ ██╔══╝  " -ForegroundColor Red
+Write-Host "███████║██║╚██████╔╝██║  ██╗███████╗" -ForegroundColor Red
+Write-Host "╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝" -ForegroundColor Red
+Write-Host ""
+Write-Host "Relax... You just got pranked! 😆" -ForegroundColor Yellow
+Write-Host ""
+Start-Sleep 6
 exit
