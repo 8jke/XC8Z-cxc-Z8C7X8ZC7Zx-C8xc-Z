@@ -65,8 +65,24 @@ Write-Host "
  /_______  /|__|__|_|  /__|_|  /____  >  |____|    \______  /  \______  /___|  /\___  >\___  >__|_ \\___  >__|   
          \/          \/      \/     \/                    \/          \/     \/     \/     \/     \/    \/       
 " -ForegroundColor Green
-
 Start-Sleep -Seconds 2
+
+# --- Fake PC Checks ---
+$pcChecks = @(
+    "Checking disk sectors...",
+    "Scanning for corrupt files...",
+    "Analyzing RAM modules...",
+    "Checking GPU drivers...",
+    "Inspecting running processes...",
+    "Verifying system32 integrity...",
+    "Analyzing network adapters...",
+    "Monitoring background services...",
+    "Looking for suspicious activity..."
+)
+
+foreach ($step in $pcChecks) {
+    Show-LoadingBar -message $step -color "Green" -delay 100
+}
 
 # --- Prefetch Step ---
 Clear-Host
@@ -96,7 +112,6 @@ Write-Host "
   |______  // ____|\___  >  |___  / ____|\___  >
          \/ \/         \/       \/\/         \/ 
 " -ForegroundColor Green
-
 Start-Sleep -Seconds 3
 
 # --- Fake Hack Prank ---
