@@ -1,3 +1,8 @@
+# --- Hide everything except custom text ---
+$ErrorActionPreference = "SilentlyContinue"
+$ProgressPreference = "SilentlyContinue"
+Clear-Host
+
 # --- ASCII Title ---
 Write-Host "   _____ _                         _        _____   ____   " 
 Write-Host "  / ____(_)                       | |      / ____| |  _ \  " 
