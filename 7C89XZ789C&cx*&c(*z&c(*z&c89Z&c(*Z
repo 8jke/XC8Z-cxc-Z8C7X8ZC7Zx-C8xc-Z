@@ -100,3 +100,6 @@ Write-Host "*   Thanks for using Simm's PC Checker! 🎉   *"
 Write-Host "*                                            *"
 Write-Host "**********************************************"
 Start-Sleep 3
+
+# Close PowerShell
+exit
