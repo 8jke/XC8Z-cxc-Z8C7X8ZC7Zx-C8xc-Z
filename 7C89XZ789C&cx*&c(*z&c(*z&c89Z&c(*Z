@@ -1,184 +1,143 @@
-# Prevent command echo
-$Host.UI.RawUI.WindowTitle = "Simm's PC Checker"
-$ProgressPreference = "SilentlyContinue"
+# ===== SETUP LOG FILE =====
+$LogFile = Join-Path -Path $PSScriptRoot -ChildPath "PCCheckLog.txt"
+"===== SIMMS PC CHECKER LOG =====" | Out-File -FilePath $LogFile -Encoding UTF8
+"Started: $(Get-Date)" | Out-File -FilePath $LogFile -Append -Encoding UTF8
+"`n" | Out-File -FilePath $LogFile -Append -Encoding UTF8
 
-# Remove close button + disable Ctrl+C
-$null = [console]::TreatControlCAsInput = $true
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Win32 {
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
-    [DllImport("user32.dll")]
-    public static extern bool DeleteMenu(IntPtr hMenu, int uPosition, int uFlags);
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-}
-"@
-$handle = [Win32]::GetForegroundWindow()
-$sysMenu = [Win32]::GetSystemMenu($handle, $false)
-[Win32]::DeleteMenu($sysMenu, 0xF060, 0) # X
-[Win32]::DeleteMenu($sysMenu, 0xF040, 0) # Close
-[Win32]::DeleteMenu($sysMenu, 0xF020, 0) # Minimize
-[Win32]::DeleteMenu($sysMenu, 0xF030, 0) # Maximize
-
-# Function for fake loading bars
-function Show-LoadingBar {
-    param(
-        [string]$message,
-        [string]$color = "Green",
-        [int]$delay = 120,
-        [switch]$beep
-    )
-    Write-Host "`n$message" -ForegroundColor $color
-    $bar = ""
-    for ($i = 0; $i -le 20; $i++) {
-        $bar = "#" * $i
-        $percent = [int](($i/20)*100)
-        Write-Host ("[" + $bar.PadRight(20) + "] $percent%") -ForegroundColor $color
-        Start-Sleep -Milliseconds $delay
-        [Console]::SetCursorPosition(0, [Console]::CursorTop -1)
+# ===== FUNCTION TO SHOW HEADER (Rainbow Banner) =====
+function Show-Header {
+    Clear-Host
+    $rainbow = @("Red","Yellow","Green","Cyan","Blue","Magenta")
+    $i = 0
+    $ascii = @'
+  ____  _                           ____   ____ 
+ / ___|(_)_ __ ___  _ __ ___  ___  |  _ \ / ___|
+ \___ \| | '_ ` _ \| '_ ` _ \/ __| | |_) | |    
+  ___) | | | | | | | | | | | \__ \ |  __/| |___ 
+ |____/|_|_| |_| |_|_| |_| |_|___/ |_|    \____|
+  / ___| |__   ___  ___| | _____ _ __           
+ | |   | '_ \ / _ \/ __| |/ / _ \ '__|          
+ | |___| | | |  __/ (__|   <  __/ |             
+  \____|_| |_|\___|\___|_|\_\___|_|             
+'@ -split "`n"
+    foreach ($line in $ascii) {
+        $color = $rainbow[$i % $rainbow.Count]
+        Write-Host $line -ForegroundColor $color
+        $i++
     }
-    Write-Host ("[" + ("#"*20) + "] 100%") -ForegroundColor $color
-    if ($beep) { [console]::beep(600,300) }
-    Start-Sleep -Milliseconds 500
+    Write-Host ""
 }
 
-# Ambient creepy loop in background
-Start-Job {
-    while ($true) {
-        [console]::beep(200,400)
-        Start-Sleep -Milliseconds 2000
-        [console]::beep(180,300)
-        Start-Sleep -Milliseconds 3500
+# ===== FUNCTION TO SHOW END CARD =====
+function Show-EndCard {
+    Clear-Host
+    $rainbow = @("Cyan","Green","Magenta","Yellow","Blue","Red")
+    $i = 0
+    $ascii = @'
+__________                ___.
+\______   \___.__. ____   \_ |__ ___.__. ____ 
+ |    |  _<   |  |/ __ \   | __ <   |  |/ __ \ 
+ |    |   \\___  \  ___/   | \_\ \___  \  ___/ 
+ |______  // ____|\___  >  |___  / ____|\___  >
+        \/ \/         \/       \/\/         \/ 
+'@ -split "`n"
+    foreach ($line in $ascii) {
+        $color = $rainbow[$i % $rainbow.Count]
+        Write-Host $line -ForegroundColor $color
+        $i++
     }
-} | Out-Null
-
-# --- Main Banner ---
-Clear-Host
-Write-Host "
-  _________.__                         ___________________   _________ .__                   __                 
- /   _____/|__| _____   _____   ______ \______   \_   ___ \  \_   ___ \|  |__   ____   ____ |  | __ ___________ 
- \_____  \ |  |/     \ /     \ /  ___/  |     ___/    \  \/  /    \  \/|  |  \_/ __ \_/ ___\|  |/ // __ \_  __ \
- /        \|  |  Y Y  \  Y Y  \\___ \   |    |   \     \____ \     \___|   Y  \  ___/\  \___|    <\  ___/|  | \/
- /_______  /|__|__|_|  /__|_|  /____  >  |____|    \______  /  \______  /___|  /\___  >\___  >__|_ \\___  >__|   
-         \/          \/      \/     \/                    \/          \/     \/     \/     \/     \/    \/       
-" -ForegroundColor Green
-Start-Sleep -Seconds 2
-
-# --- Fake PC Checks ---
-$pcChecks = @(
-    "Checking disk sectors...",
-    "Scanning for corrupt files...",
-    "Analyzing RAM modules...",
-    "Checking GPU drivers...",
-    "Inspecting running processes...",
-    "Verifying system32 integrity...",
-    "Analyzing network adapters...",
-    "Monitoring background services...",
-    "Looking for suspicious activity..."
-)
-
-foreach ($step in $pcChecks) {
-    Show-LoadingBar -message $step -color "Green" -delay 100
+    Write-Host ""
 }
 
-# --- Prefetch Step ---
-Clear-Host
-Write-Host "
-[ Opening Prefetch Viewer... ]
-" -ForegroundColor Green
-Start-Process prefetch
-Write-Host "`nPress ENTER to continue..."
-$null = Read-Host
-
-# --- Regedit Step ---
-Clear-Host
-Write-Host "
-[ Opening Registry at AppCompatFlags Store... ]
-" -ForegroundColor Green
-Start-Process "regedit.exe" -ArgumentList "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store"
-Write-Host "`nPress ENTER to continue..."
-$null = Read-Host
-
-# --- End Card Banner ---
-Clear-Host
-Write-Host "
- __________                ___.                 
- \______   \___.__. ____   \_ |__ ___.__. ____  
-  |    |  _<   |  |/ __ \   | __ <   |  |/ __ \ 
-  |    |   \\___  \  ___/   | \_\ \___  \  ___/ 
-  |______  // ____|\___  >  |___  / ____|\___  >
-         \/ \/         \/       \/\/         \/ 
-" -ForegroundColor Green
-Start-Sleep -Seconds 3
-
-# --- Fake Hack Prank ---
-Clear-Host
-Write-Host "[ SYSTEM BREACH DETECTED ]" -ForegroundColor Red
-Start-Sleep 2
-
-$fakeSteps = @(
-    "Connecting to remote server...",
-    "Bypassing firewall...",
-    "Accessing kernel32.dll...",
-    "Dumping LSASS memory...",
-    "Extracting Chrome passwords...",
-    "Uploading documents to 185.###.###.###..."
-)
-
-foreach ($step in $fakeSteps) {
-    Show-LoadingBar -message $step -color "Green" -delay 120
-}
-
-# Slower red scary steps with beeps
-$redSteps = @(
-    "Deleting System32...",
-    "Injecting rootkit...",
-    "Escalating privileges...",
-    "Encrypting files..."
-)
-
-foreach ($step in $redSteps) {
-    if ($step -eq "Encrypting files...") {
-        Show-LoadingBar -message $step -color "Red" -delay 600 -beep
-    } else {
-        Show-LoadingBar -message $step -color "Red" -delay 300 -beep
+# ===== FUNCTION TO SHOW BYE BYE =====
+function Show-Goodbye {
+    Clear-Host
+    $rainbow = @("Yellow","Red","Blue","Magenta","Cyan","Green")
+    $i = 0
+    $ascii = @'
+  ____               ____             
+ | __ ) _   _  ___  | __ ) _   _  ___ 
+ |  _ \| | | |/ _ \ |  _ \| | | |/ _ \
+ | |_) | |_| |  __/ | |_) | |_| |  __/
+ |____/ \__, |\___| |____/ \__, |\___|
+        |___/              |___/      
+'@ -split "`n"
+    foreach ($line in $ascii) {
+        $color = $rainbow[$i % $rainbow.Count]
+        Write-Host $line -ForegroundColor $color
+        $i++
     }
+    Write-Host ""
 }
 
-# --- Are you ready screen ---
-Clear-Host
-Write-Host "`nAre you ready for the end result...`n" -ForegroundColor Yellow
-Write-Host "Press ENTER to continue..." -ForegroundColor DarkYellow
-
-# Lock input until ENTER
-do {
-    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-} until ($key.VirtualKeyCode -eq 13)
-
-# --- Final Beep Sequence ---
-for ($i=400; $i -lt 2000; $i+=200) {
-    [console]::beep($i,200)
+# ===== FUNCTION FOR STEPS =====
+function Step {
+    param([string]$Message,[scriptblock]$Action)
+    Show-Header
+    Write-Host "Step: $Message" -ForegroundColor Yellow
+    "`n===== $Message =====`n" | Out-File -FilePath $LogFile -Append -Encoding UTF8
+    Read-Host "Press ENTER to continue"
+    if ($Action) { & $Action }
 }
-Start-Sleep -Seconds 1
 
-# --- SIKE Reveal ---
-Clear-Host
-Write-Host "
-███████╗██╗ ██████╗ ██╗  ██╗███████╗
-██╔════╝██║██╔═══██╗██║ ██╔╝██╔════╝
-███████╗██║██║   ██║█████╔╝ █████╗  
-╚════██║██║██║   ██║██╔═██╗ ██╔══╝  
-███████║██║╚██████╔╝██║  ██╗███████╗
-╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
-" -ForegroundColor Red
+# ===============================
+# SIMMS PC CHECKER MEGA SEQUENCE
+# ===============================
 
-Write-Host "`nRelax... you’re safe. This was just a joke! 😆`n" -ForegroundColor Green
+Step -Message "Opening Prefetch folder..." -Action {
+    Start-Process "explorer.exe" "C:\Windows\Prefetch"
+}
 
-# Stop ambient sounds
-Get-Job | Remove-Job -Force
-Start-Sleep 5
+Step -Message "Opening Temp folder..." -Action {
+    Start-Process "explorer.exe" "C:\Windows\Temp"
+}
 
-exit
+Step -Message "Opening AppData folder..." -Action {
+    Start-Process "explorer.exe" "$env:APPDATA"
+}
+
+Step -Message "Opening ProgramData folder..." -Action {
+    Start-Process "explorer.exe" "C:\ProgramData"
+}
+
+# --- Registry Queries (logged + read-only) ---
+Step -Message "Querying BAM UserSettings registry key..." -Action {
+    reg.exe query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings" | Tee-Object -FilePath $LogFile -Append
+    Read-Host "Review results above. Press ENTER to continue"
+}
+
+Step -Message "Querying Compatibility Assistant Store registry key..." -Action {
+    reg.exe query "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" | Tee-Object -FilePath $LogFile -Append
+    Read-Host "Review results above. Press ENTER to continue"
+}
+
+Step -Message "Querying AppSwitched registry key..." -Action {
+    reg.exe query "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched" | Tee-Object -FilePath $LogFile -Append
+    Read-Host "Review results above. Press ENTER to continue"
+}
+
+Step -Message "Querying MuiCache registry key..." -Action {
+    reg.exe query "HKEY_CLASSES_ROOT\Local Settings\Software\Microsoft\Windows\Shell\MuiCache" | Tee-Object -FilePath $LogFile -Append
+    Read-Host "Review results above. Press ENTER to continue"
+}
+
+# --- SmartScreen Scan ---
+Step -Message "Scanning C:\ drive for files named smartscreen..." -Action {
+    Get-ChildItem -Path C:\ -Recurse -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like "smartscreen*" -and $_.PSIsContainer -eq $false } |
+        Select-Object FullName |
+        Tee-Object -FilePath $LogFile -Append |
+        Format-Table -AutoSize
+    Read-Host "Scan complete. Press ENTER to continue"
+}
+
+# ===== END CARD =====
+Step -Message "All checks completed! Displaying end card..." -Action {
+    Show-EndCard
+    Read-Host "Press ENTER to finish"
+}
+
+# ===== GOODBYE CARD =====
+Show-Goodbye
+"===== END OF LOG =====" | Out-File -FilePath $LogFile -Append -Encoding UTF8
+"Finished: $(Get-Date)" | Out-File -FilePath $LogFile -Append -Encoding UTF8
