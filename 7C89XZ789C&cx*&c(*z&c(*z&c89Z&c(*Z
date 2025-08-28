@@ -1,1 +1,3 @@
 Write-Output "Hello from GitHub!"
+Write-Output "Today's date is: $(Get-Date)"
+Write-Output "You are running PowerShell version: $($PSVersionTable.PSVersion)"
