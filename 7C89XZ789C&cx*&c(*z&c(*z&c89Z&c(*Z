@@ -1,3 +1,4 @@
+# --- ASCII Title ---
 Write-Host "   _____ _                         _        _____   ____   " 
 Write-Host "  / ____(_)                       | |      / ____| |  _ \  " 
 Write-Host " | (___  ___ _ __ ___  _ __  _   _| |__   | |      | |_) | " 
@@ -6,9 +7,96 @@ Write-Host "  ____) | | | | | | | |_) | |_| | |_) | | |____  | |_) | "
 Write-Host " |_____/|_| |_| |_| .__/ \__,_|_.__/   \_____| |____/  " 
 Write-Host "                   | |                                  " 
 Write-Host "                   |_|      PC Checker                  " 
-Start-Sleep 2
-Start-Process explorer.exe "$env:WINDIR\Prefetch"
-Start-Sleep 2
-reg.exe add "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit" /v LastKey /t REG_SZ /d "Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null
-Start-Process regedit.exe
+Write-Host ""
+
+# --- Loading bar function ---
+function Show-LoadingBar {
+    param([string]$Message)
+    $bar = ""
+    for ($i = 1; $i -le 20; $i++) {
+        $bar += "#"
+        Write-Host ("$Message [$bar" + (" " * (20 - $i)) + "]") -NoNewline
+        Start-Sleep -Milliseconds 150
+        Write-Host "`r" -NoNewline
+    }
+    Write-Host "$Message [####################] Done!"
+}
+
+# --- Step 1: Prefetch ---
+Show-LoadingBar "Opening Prefetch"
+Start-Process explorer.exe "$env:WINDIR\Prefetch" | Out-Null
+
+# Long instructions (forces scroll)
+Write-Host ""
+Write-Host "------------------------------------------------------"
+Write-Host "   Prefetch Viewer Instructions"
+Write-Host "------------------------------------------------------"
+Write-Host ""
+Write-Host "The Prefetch folder is a hidden system directory used"
+Write-Host "by Windows to improve performance. It stores data"
+Write-Host "about applications that you launch, so the operating"
+Write-Host "system can preload files into memory the next time."
+Write-Host ""
+Write-Host "🟢 Typical uses of Prefetch:"
+Write-Host "- Speeding up program launches."
+Write-Host "- Allowing Windows to optimize app startup."
+Write-Host "- Helping troubleshoot app startup problems."
+Write-Host ""
+Write-Host "🟠 Things to keep in mind:"
+Write-Host "- Deleting Prefetch files is usually unnecessary."
+Write-Host "- Windows will rebuild them automatically anyway."
+Write-Host "- Prefetch can give investigators forensic evidence"
+Write-Host "  of which apps were run on the system."
+Write-Host ""
+Write-Host "⚠️ Caution:"
+Write-Host "Removing Prefetch data may temporarily slow down apps."
+Write-Host "It will not free up significant disk space."
+Write-Host ""
+Write-Host "------------------------------------------------------"
+Write-Host "Scroll down to read all details."
+Read-Host "Press ENTER to continue..."
+
+# --- Step 2: Regedit ---
+Show-LoadingBar "Opening Registry Editor"
+reg.exe add "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null 2>&1
+reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit" /v LastKey /t REG_SZ /d "Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store" /f >$null 2>&1
+Start-Process regedit.exe | Out-Null
+
+# Long instructions (forces scroll)
+Write-Host ""
+Write-Host "------------------------------------------------------"
+Write-Host "   Registry Key Instructions"
+Write-Host "------------------------------------------------------"
+Write-Host ""
+Write-Host "You are now at the following key:"
+Write-Host "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store"
+Write-Host ""
+Write-Host "🟢 What this key does:"
+Write-Host "- It stores Compatibility Assistant data."
+Write-Host "- Windows Compatibility Assistant tracks when old"
+Write-Host "  programs have issues running on newer Windows versions."
+Write-Host "- The Store subkey records adjustments or notes about"
+Write-Host "  apps that triggered compatibility warnings."
+Write-Host ""
+Write-Host "🟠 Why it matters:"
+Write-Host "- Developers may review it when testing apps."
+Write-Host "- IT admins may check it when troubleshooting."
+Write-Host "- Security analysts may look here for persistence clues."
+Write-Host ""
+Write-Host "⚠️ Important Warning:"
+Write-Host "Editing registry entries can cause Windows instability."
+Write-Host "Only make changes if you understand the consequences."
+Write-Host "Always back up the registry before modifying keys."
+Write-Host ""
+Write-Host "------------------------------------------------------"
+Write-Host "Scroll down to review everything."
+Read-Host "Press ENTER to exit"
+
+# --- Final Exit Banner ---
+Write-Host ""
+Write-Host "**********************************************"
+Write-Host "*                                            *"
+Write-Host "*   Thanks for using Simm's PC Checker! 🎉   *"
+Write-Host "*                                            *"
+Write-Host "**********************************************"
+Start-Sleep 3
