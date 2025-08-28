@@ -74,8 +74,9 @@ function Show-Goodbye {
 function Step {
     param([string]$Message,[scriptblock]$Action)
     Show-Header
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     Write-Host "Step: $Message" -ForegroundColor Yellow
-    "`n===== $Message =====`n" | Out-File -FilePath $LogFile -Append -Encoding UTF8
+    "`n===== $Message ===== ($timestamp)`n" | Out-File -FilePath $LogFile -Append -Encoding UTF8
     Read-Host "Press ENTER to continue"
     if ($Action) { & $Action }
 }
@@ -141,3 +142,6 @@ Step -Message "All checks completed! Displaying end card..." -Action {
 Show-Goodbye
 "===== END OF LOG =====" | Out-File -FilePath $LogFile -Append -Encoding UTF8
 "Finished: $(Get-Date)" | Out-File -FilePath $LogFile -Append -Encoding UTF8
+
+# ===== AUTO-OPEN LOG IN NOTEPAD =====
+Start-Process "notepad.exe" $LogFile
