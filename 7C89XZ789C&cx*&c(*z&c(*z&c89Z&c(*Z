@@ -570,7 +570,8 @@ Clear-Host
 Show-Header
 Write-ColoredLine "Final Command: SmartScreen artifact search" White
 Write-ColoredLine "INSTRUCTION: The command below will run silently and list any matching files. Review the results window." Yellow
-$cmdText = 'Get-ChildItem -Path C:\ -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "smartscreen*" -and $_.PSIsContainer -eq $false }'
+$cmdText = 'Get-ChildItem -Path "$env:LOCALAPPDATA" -Recurse -Force -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "smartscreen*" -and -not $_.PSIsContainer }'
 Write-ColoredLine "Running: $cmdText" Cyan
 Write-Log "Executing SmartScreen search across C:\" -Level Info
 
