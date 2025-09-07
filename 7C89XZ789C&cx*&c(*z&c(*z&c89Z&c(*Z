@@ -60,7 +60,7 @@ function Show-ProgressBar {
     Write-Host ""
 }
 
-# Rainbow ASCII header (prints before every step)
+# ASCII header (prints before every step)
 function Show-Header {
     $ascii = @(
         '  __   ____ ___      __ ',
@@ -69,30 +69,26 @@ function Show-Header {
         '    \_/ \__, | \_/\_/   ',
         '         |_|            '
     )
-    $colors = @('Yellow','Cyan','Green','Magenta','Blue','Red','White','DarkYellow','Gray')
     Write-Host ""
-    for ($i=0; $i -lt $ascii.Count; $i++) {
-        $col = $colors[$i % $colors.Count]
-        Write-Host $ascii[$i] -ForegroundColor $col
+    foreach ($line in $ascii) {
+        Write-Host $line -ForegroundColor Yellow
     }
     Write-Host ""
 }
 
-# Rainbow ASCII footer (goodbye)
+# ASCII footer (goodbye)
 function Show-Footer {
     $ascii = @(
-'  ____               ____             ',
-' | __ ) _   _  ___  | __ ) _   _  ___ ',
-' |  _ \| | | |/ _ \ |  _ \| | | |/ _ \',
-' | |_) | |_| |  __/ | |_) | |_| |  __/',
-' |____/ \__, |\___| |____/ \__, |\___|',
-'        |___/              |___/      '
+        '  ____               ____             ',
+        ' | __ ) _   _  ___  | __ ) _   _  ___ ',
+        ' |  _ \| | | |/ _ \ |  _ \| | | |/ _ \',
+        ' | |_) | |_| |  __/ | |_) | |_| |  __/',
+        ' |____/ \__, |\___| |____/ \__, |\___|',
+        '        |___/              |___/      '
     )
-    $colors = @('Yellow','Cyan','Green','Magenta','Blue','Red')
     Write-Host ""
-    for ($i=0; $i -lt $ascii.Count; $i++) {
-        $col = $colors[$i % $colors.Count]
-        Write-Host $ascii[$i] -ForegroundColor $col
+    foreach ($line in $ascii) {
+        Write-Host $line -ForegroundColor Yellow
     }
     Write-Host ""
 }
