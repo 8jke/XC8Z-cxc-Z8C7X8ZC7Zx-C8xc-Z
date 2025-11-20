@@ -136,7 +136,7 @@ if ($gpu) {
     else { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Yellow; Write-Host "GPU is fine; some views may be slower." -ForegroundColor Yellow }
 }
 Write-Host ""
-Wait-ForEnter "Press Enter to begin Step 1..."
+Wait-ForEnter "Press Enter to begin."
 Show-ProgressBar
 
 Write-ColoredLine "INSTRUCTION: Let the checks run. Review results below. Press Enter to continue." Yellow
@@ -277,7 +277,7 @@ Write-Host ""
 Write-Host ("Success Rate: $rate% ($success / $total)") -ForegroundColor $rateColor
 Write-Log "System check success rate: $rate% ($success/$total)" -Level Info
 
-Wait-ForEnter "Press Enter to continue to Step 2..."
+Wait-ForEnter "Press Enter to continue."
 Show-ProgressBar
 
 $regPathPF = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"
@@ -310,7 +310,7 @@ function Show-PrefetchFilesViaShell {
     } catch { Write-Host "Failed to list Prefetch files." -ForegroundColor Yellow; Write-Log "Prefetch listing failed: $_" -Level Warning }
 }
 Show-PrefetchFilesViaShell
-Wait-ForEnter "Press Enter to continue to Step 3..."
+Wait-ForEnter "Press Enter to continue."
 Show-ProgressBar
 
 Write-ColoredLine "INSTRUCTION: A grid will open. Slowly scroll to the bottom, then close the window." Yellow
@@ -380,7 +380,7 @@ $Bam = foreach ($Sid in $Users) {
 }
 Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 $Bam | Out-GridView -PassThru -Title "BAM key entries $($Bam.Count)  - TimeZone: ($tz) -> ActiveBias: ($bias) - DayLight: ($day)"
-Wait-ForEnter "Press Enter to continue to Step 3..."
+Wait-ForEnter "Press Enter to continue."
 Show-ProgressBar
 
 Write-ColoredLine "INSTRUCTION: Wait for 'Ready' bottom-left, scroll slowly down, then close the window." Yellow
@@ -495,7 +495,7 @@ if ($exe) {
     Maximize-ByProcess -Process $proc
     while (-not $proc.HasExited) { Start-Sleep -Milliseconds 500 }
 }
-Wait-ForEnter "Press Enter to continue to the Registry Review step..."
+Wait-ForEnter "Press Enter to continue."
 
 Write-ColoredLine "For each location: review and scroll to bottom, then close Regedit and press Enter to continue." White
 
@@ -555,7 +555,7 @@ foreach ($k in $RegKeys) {
     Open-RegKeyInteractive -KeyPath $k
 }
 
-Wait-ForEnter "Press Enter to continue to the  ..."
+Wait-ForEnter "Press Enter to continue."
 
 Start-Job {
     Add-Type -AssemblyName System.Windows.Forms
@@ -617,6 +617,21 @@ function Write-Section {
         }
     }
 }
+
+Write-Host "A notepad will open. Scroll down on it then you may close"
+
+$OutputFile = "$env:TEMP\Hidden_Files_Report.txt"
+
+# Find hidden files that do NOT include the System attribute
+Get-ChildItem -Path $Path -Recurse -Force -ErrorAction SilentlyContinue |
+    Where-Object { 
+        ($_.Attributes -match "Hidden") -and 
+        ($_.Attributes -notmatch "System")
+    } |
+    Select-Object FullName, Attributes, Length, LastWriteTime |
+    Out-File -FilePath $OutputFile -Encoding UTF8
+
+Start-Process notepad.exe $OutputFile
 
 Wait-ForEnter "Press enter to end the powershell command."
 Show-ProgressBar
