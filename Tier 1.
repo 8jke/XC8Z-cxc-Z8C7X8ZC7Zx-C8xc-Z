@@ -36,13 +36,7 @@ function Write-Log {
 }
 
 # Simple colored line
-function Write-ColoredLine { 
-    param([string]$Text,[ConsoleColor]$Color='White') 
-    $c=$Host.UI.RawUI.ForegroundColor
-    $Host.UI.RawUI.ForegroundColor=$Color
-    Write-Host $Text
-    $Host.UI.RawUI.ForegroundColor=$c 
-}
+function Write-ColoredLine { param([string]$Text,[ConsoleColor]$Color='White'); $c=$Host.UI.RawUI.ForegroundColor; $Host.UI.RawUI.ForegroundColor=$Color; Write-Host $Text; $Host.UI.RawUI.ForegroundColor=$c }
 
 # Enter-to-continue helper
 function Wait-ForEnter {
@@ -51,18 +45,12 @@ function Wait-ForEnter {
     [void][Console]::ReadLine()
 }
 
-function Show-ProgressBar {
-    for ($i=1; $i -le 30; $i++) {
-        Write-Host -NoNewline "#"
-        Start-Sleep -Milliseconds 40
-    }
-    Write-Host ""
-}
-
 # Ensure Admin
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $IsAdmin) {
+    Show-Header
+    Write-Host ""
     Write-Host "[WARNING] This script is NOT running with Administrator privileges." -ForegroundColor Red
     Write-Host "[ACTION] Right-click PowerShell and select 'Run as Administrator'." -ForegroundColor Yellow
     Write-Log "Script not run as admin; exiting." -Level Error
@@ -78,8 +66,7 @@ Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 public class WinAPI {
-    [DllImport(\"user32.dll\")] 
-    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 }
 "@
 $SW_MAXIMIZE = 3
@@ -88,12 +75,9 @@ $SW_MAXIMIZE = 3
 function Maximize-ByProcess {
     param([System.Diagnostics.Process]$Process)
     if (-not $Process) { return }
-    for ($i=0; $i -lt 20; $i++){
+    for ($i=0;$i -lt 20;$i++){
         $Process.Refresh()
-        if ($Process.MainWindowHandle -ne 0) { 
-            [WinAPI]::ShowWindow($Process.MainWindowHandle, $SW_MAXIMIZE) | Out-Null
-            break
-        }
+        if ($Process.MainWindowHandle -ne 0) { [WinAPI]::ShowWindow($Process.MainWindowHandle, $SW_MAXIMIZE) | Out-Null; break }
         Start-Sleep -Milliseconds 250
     }
 }
@@ -111,20 +95,20 @@ function Ensure-Tool {
     if (-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
     $exe = Get-ChildItem -Path $folder -Recurse -Filter $PrimaryExeName -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $exe) {
-        Write-Log "Downloading ${WorkFolder} from ${ZipUrl}"
+        Write-Log "Downloading $WorkFolder from $ZipUrl"
         Invoke-WebRequest -Uri $ZipUrl -OutFile $zip -UseBasicParsing -ErrorAction Stop
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $folder, $true)
         Remove-Item $zip -Force -ErrorAction SilentlyContinue
         $exe = Get-ChildItem -Path $folder -Recurse -Filter $PrimaryExeName -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($exe) { Write-Log "${WorkFolder} extracted" -Level Success } else { Write-Log "${WorkFolder} exe not found after extract" -Level Error }
+        if ($exe) { Write-Log "$WorkFolder extracted" -Level Success } else { Write-Log "$WorkFolder exe not found after extract" -Level Error }
     } else {
-        Write-Log "${WorkFolder} already present; skipping download" -Level Success
+        Write-Log "$WorkFolder already present; skipping download" -Level Success
     }
     return $exe
 }
 
-# Light hardware heads-up
+# Light hardware heads-up (unchanged from your flow)
 $cpu = Get-WmiObject Win32_Processor | Select-Object -First 1
 if ($cpu) {
     if ($cpu.NumberOfCores -ge 4 -and $cpu.MaxClockSpeed -ge 2500) {
@@ -138,16 +122,9 @@ if ($cpu) {
 $gpu = Get-WmiObject Win32_VideoController | Select-Object -First 1
 if ($gpu) {
     $goodGPUs = @("RTX 30","RTX 40","RX 6000","RX 7000")
-    $isGood = $false
-    foreach($k in $goodGPUs){ if ($gpu.Name -like "*$k*"){ $isGood=$true; break } }
-    if ($isGood) { 
-        Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Green
-        Write-Host "Your GPU looks good." -ForegroundColor Green
-    }
-    else { 
-        Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Yellow
-        Write-Host "GPU is fine; some views may be slower." -ForegroundColor Yellow
-    }
+    $isGood = $false; foreach($k in $goodGPUs){ if ($gpu.Name -like "*$k*"){ $isGood=$true; break } }
+    if ($isGood) { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Green; Write-Host "Your GPU looks good." -ForegroundColor Green }
+    else { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Yellow; Write-Host "GPU is fine; some views may be slower." -ForegroundColor Yellow }
 }
 Write-Host ""
 Wait-ForEnter "Press Enter to begin Step 1..."
@@ -252,8 +229,8 @@ try {
 
 try {
     $threats = Get-MpThreat | Where-Object { $_.Status -eq "Active" }
-    if ($threats) { foreach ($t in $threats) { $threatsOutput += "FAILURE: $($t.ThreatName) | $($t.Resources)"
-    Write-Log "Active threat: $($t.ThreatName)" -Level Error
+    if ($threats) { foreach ($t in $threats) { $threatsOutput += "FAILURE: $($t.ThreatName) | $($t.Resources)"; Write-Log "Active threat: $($t.ThreatName)" -Level Error } }
+    else { $threatsOutput += "SUCCESS: No active threats."; Write-Log "No active threats" -Level Success }
 } catch { $threatsOutput += "WARNING: Threat query failed."; Write-Log "Get-MpThreat failed" -Level Warning }
 
 try {
@@ -393,6 +370,8 @@ Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 $Bam | Out-GridView -PassThru -Title "BAM key entries $($Bam.Count)  - TimeZone: ($tz) -> ActiveBias: ($bias) - DayLight: ($day)"
 Wait-ForEnter "Press Enter to continue to Step 3..."
 
+Clear-Host
+Show-Header
 Write-ColoredLine "Step 4 of 6: Autoruns Check" White
 Write-ColoredLine "INSTRUCTION: Wait for 'Ready' bottom-left, scroll slowly down, then close the window." Yellow
 Show-ProgressBar
@@ -457,7 +436,37 @@ $RegKeys = @(
     'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store',
     'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched',
     'HKEY_CLASSES_ROOT\Local Settings\Software\Microsoft\Windows\Shell\MuiCache',
+    'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppLaunch',
+    'Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\ShowJumpView',
+    'Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppBadgeUpdated',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox\DefaultIcon',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox-player\DefaultIcon',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox-player\shell\open\command',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox\shell\open\command',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-12-1-3068523005-1336429617-3773850040-151574247',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-3657241696-2636685733-3452853471-1000',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-3657241696-2636685733-3452853471-1001',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-3657241696-2636685733-3452853471-500',
+    'HKEY_CURRENT_USER\Software\Classes\discord-1393297926209405000\DefaultIcon',
+    'HKEY_CLASSES_ROOT\discord-1393297926209405000\shell\open\command'
+)
+
+# --- Append all Discord protocol handler keys dynamically ---
+$discordKeys = Get-ChildItem "HKCR:\" -ErrorAction SilentlyContinue |
+    Where-Object { $_.PSChildName -like "discord-*" }
+
+foreach ($key in $discordKeys) {
+    # Add DefaultIcon and shell\open\command subkeys dynamically
+    $RegKeys += "$($key.PSPath)\DefaultIcon"
+    $RegKeys += "$($key.PSPath)\shell\open\command"
 }
+
+# --- Loop through all keys exactly as in your original logic ---
+foreach ($k in $RegKeys) {
+    Open-RegKeyInteractive -KeyPath $k
+}
+
+Wait-ForEnter "Enter to end this"
 
 Write-ColoredLine "All steps completed. Log saved to: $LogFile" Green
 Show-Footer
