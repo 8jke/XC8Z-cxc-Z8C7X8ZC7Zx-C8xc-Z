@@ -269,37 +269,94 @@ Write-Log "System check success rate: $rate% ($success/$total)" -Level Info
 
 Wait-ForEnter "Press Enter to continue to Step 2..."
 
-$regPathPF = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"
-try {
-    $current = Get-ItemPropertyValue -Path $regPathPF -Name EnablePrefetcher -ErrorAction Stop
-    if ($current -ne 3) { Set-ItemProperty -Path $regPathPF -Name EnablePrefetcher -Value 3 -ErrorAction Stop; Write-Log "Prefetcher enabled (set to 3)" -Level Success; Write-Host "Prefetcher has been enabled." -ForegroundColor Green }
-    else { Write-Host "Prefetcher is already enabled." -ForegroundColor Green; Write-Log "Prefetcher already enabled" -Level Success }
-} catch { Write-Host "Unable to access/modify Prefetcher setting." -ForegroundColor Yellow; Write-Log "Prefetcher setting inaccessible" -Level Warning }
+$regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"
+$successCounter = 0
+$totalSteps = 2
+
+function Ensure-PrefetcherEnabled {
+    try {
+        $currentValue = Get-ItemPropertyValue -Path $regPath -Name EnablePrefetcher -ErrorAction Stop
+        if ($currentValue -ne 3) {
+            Set-ItemProperty -Path $regPath -Name EnablePrefetcher -Value 3 -ErrorAction Stop
+            Write-Host "Prefetcher has been enabled." -ForegroundColor Green
+        } else {
+            Write-Host "Prefetcher is already enabled." -ForegroundColor Green
+        }
+        $GLOBAL:successCounter++
+    } catch {
+        Write-Host "Error: Unable to access or modify Prefetcher registry setting." -ForegroundColor Red
+    }
+}
+Ensure-PrefetcherEnabled
 
 function Show-PrefetchFilesViaShell {
     $prefetchDir = "C:\Windows\Prefetch"
     try {
         $items = Get-ChildItem -Path $prefetchDir -Filter *.pf -ErrorAction Stop
-        if (-not $items) { Write-Host "No prefetch files found in $prefetchDir." -ForegroundColor Yellow; return }
+        if ($items.Count -eq 0) {
+            Write-Host "No prefetch files found in $prefetchDir." -ForegroundColor Red
+            return
+        }
+
         Add-Type -AssemblyName System.Windows.Forms
         Add-Type -AssemblyName System.Drawing
         $form = New-Object System.Windows.Forms.Form
         $form.Text = "Prefetch Viewer"
         $form.WindowState = 'Maximized'
-        $form.TopMost = $true
+        $form.MinimumSize = New-Object System.Drawing.Size(800, 600)
+        $form.StartPosition = "CenterScreen"
+        $form.BackColor = [System.Drawing.Color]::White
+        $form.Topmost = $true
+        $form.FormBorderStyle = 'Sizable'
+
         $dgv = New-Object System.Windows.Forms.DataGridView
-        $dgv.Dock = 'Fill'; $dgv.ReadOnly = $true; $form.Controls.Add($dgv)
+        $dgv.Dock = 'Fill'
+        $dgv.ReadOnly = $true
+        $dgv.BackgroundColor = [System.Drawing.Color]::White
+        $dgv.DefaultCellStyle.ForeColor = [System.Drawing.Color]::Black
+        $dgv.ColumnHeadersDefaultCellStyle.ForeColor = [System.Drawing.Color]::Black
+        $dgv.ColumnHeadersDefaultCellStyle.BackColor = [System.Drawing.Color]::LightGray
+        $dgv.EnableHeadersVisualStyles = $false
+        $dgv.AutoSizeColumnsMode = 'AllCells'
+        $form.Controls.Add($dgv)
+
         $table = New-Object System.Data.DataTable
-        $table.Columns.Add("FileName",[string])|Out-Null
-        $table.Columns.Add("SizeKB",[double])|Out-Null
-        $table.Columns.Add("LastWrite",[datetime])|Out-Null
-        foreach ($f in $items){ $row=$table.NewRow(); $row["FileName"]=$f.Name; $row["SizeKB"]=[math]::Round($f.Length/1KB,2); $row["LastWrite"]=$f.LastWriteTime; $table.Rows.Add($row) }
+        $table.Columns.Add("FileName", [string]) | Out-Null
+        $table.Columns.Add("Size (KB)", [double]) | Out-Null
+        $table.Columns.Add("LastWriteTime", [datetime]) | Out-Null
+
+        foreach ($file in $items) {
+            $row = $table.NewRow()
+            $row["FileName"] = $file.Name
+            $row["Size (KB)"] = [math]::Round($file.Length / 1KB, 2)
+            $row["LastWriteTime"] = $file.LastWriteTime
+            $table.Rows.Add($row)
+        }
+
         $dgv.DataSource = $table
+        $form.Add_Shown({ $form.Activate() })
+        $GLOBAL:successCounter++
         [void]$form.ShowDialog()
-    } catch { Write-Host "Failed to list Prefetch files." -ForegroundColor Yellow; Write-Log "Prefetch listing failed: $_" -Level Warning }
+    } catch {
+        Write-Host "Failed to list Prefetch files: $_" -ForegroundColor Red
+    }
 }
 Show-PrefetchFilesViaShell
-Wait-ForEnter "Press Enter to continue to Step 3..."
+
+# Show Success Rate
+$rate = [math]::Round(($successCounter / $totalSteps) * 100, 0)
+$rateColor = if ($rate -eq 100) { "Green" } else { "Red" }
+Write-Host ""
+Write-Host ("Success Rate: $rate% ($successCounter / $totalSteps)") -ForegroundColor $rateColor
+
+# Wait for Enter
+function Wait-ForEnter {
+ 
+    Write-ColoredLine "Press Enter to continue..." Yellow 
+    [void][System.Console]::ReadLine()
+}
+Wait-ForEnter
+Clear-Host
 
 Write-ColoredLine "INSTRUCTION: A grid will open. Slowly scroll to the bottom, then close the window." Yellow
 
@@ -444,6 +501,122 @@ foreach ($k in $RegKeys) {
 }
 
 Wait-ForEnter "Enter to end this"
+
+$processNames = @("procexp32", "procexp64", "procexp64a")
+$runningPE = Get-Process -ErrorAction SilentlyContinue | Where-Object { $processNames -contains $_.ProcessName.ToLower() }
+
+if ($runningPE) {
+    Write-ColoredLine "[SUCCESS] Found and terminated running Process Explorer process(es)." Green
+    $runningPE | ForEach-Object {
+        try {
+            $_ | Stop-Process -Force -ErrorAction Stop
+            Write-ColoredLine "[SUCCESS]  • Terminated process ID $($_.Id)." Green
+        } catch {
+            Write-ColoredLine "[FAILED]  • Failed to terminate process ID $($_.Id): $($_.Exception.Message)" Red
+        }
+    }
+    Start-Sleep -Seconds 2
+    Write-ColoredLine "[SUCCESS] All Process Explorer processes terminated." Green
+} else {
+    Write-ColoredLine "[SUCCESS] No running Process Explorer processes were found." Green
+}
+
+$BaseFolder = "C:\Vex's powershell tools."
+$extractFolder = Join-Path $baseFolder "ProcessExplorer"
+$zipUrl = "https://download.sysinternals.com/files/ProcessExplorer.zip"
+$zipPath = Join-Path $baseFolder "ProcessExplorer.zip"
+
+if (Test-Path $baseFolder) {
+    Write-ColoredLine "[SUCCESS] Cleaned up existing C:\Vex's powershell tools." Green
+    Get-ChildItem -Path $baseFolder -Force -Recurse | ForEach-Object {
+        try {
+            if ($_.Attributes -band [System.IO.FileAttributes]::ReadOnly) {
+                $_.Attributes = $_.Attributes -bxor [System.IO.FileAttributes]::ReadOnly
+            }
+            if ($_.Attributes -band [System.IO.FileAttributes]::Hidden) {
+                $_.Attributes = $_.Attributes -bxor [System.IO.FileAttributes]::Hidden
+            }
+            Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
+        } catch {
+            Write-ColoredLine "[INFO] Didn't remove item $($_.FullName): $($_.Exception.Message)" White
+        }
+    }
+} else {
+    try {
+        New-Item -ItemType Directory -Path $baseFolder -ErrorAction Stop | Out-Null
+        Write-ColoredLine '[SUCCESS] Created folder C:\Vex's powershell tools.' Green
+    } catch {
+        Write-ColoredLine '[INFO] Folder may already exist' Green
+    }
+}
+
+try {
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+    Write-ColoredLine '[SUCCESS] Downloaded Process Explorer.' Green
+} catch {
+    Write-ColoredLine '[FAILED] Failed to download Process Explorer: $($_.Exception.Message)' Red
+}
+
+try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractFolder)
+    Write-ColoredLine '[SUCCESS] Extracted Process Explorer zip.' Green
+} catch {
+    Write-ColoredLine '[SUCCESS] Files already exist' Green
+}
+Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+
+$regFileUrl = "https://pastebin.com/raw/gse8NxwU"
+$regFilePath = Join-Path $baseFolder "procexp_config.reg"
+
+try {
+    Invoke-WebRequest -Uri $regFileUrl -OutFile $regFilePath -UseBasicParsing -ErrorAction Stop
+    Write-ColoredLine "[SUCCESS] Downloaded Process Explorer registry configuration." Green
+} catch {
+    Write-ColoredLine "[FAILED] Failed to download registry config: $($_.Exception.Message)" Red
+}
+
+try {
+    $cmdPath = "$env:SystemRoot\System32\cmd.exe"
+    if (-Not (Test-Path $cmdPath)) {
+        throw "cmd.exe not found at expected location: $cmdPath"
+    }
+    & $cmdPath /c "reg import `"$regFilePath`""
+    if ($LASTEXITCODE -eq 0) {
+        Write-ColoredLine "[SUCCESS] Imported registry configuration successfully." Green
+    } else {
+        Write-ColoredLine "[FAILED] reg import returned non-zero exit code: $LASTEXITCODE" Red
+    }
+} catch {
+    Write-ColoredLine "[FAILED] Registry importing failed: $($_.Exception.Message)" Red
+}
+
+$actualExe = Get-ChildItem -Path $extractFolder -Filter "procexp64.exe" -Recurse | Select-Object -First 1
+
+if ($actualExe) {
+    Write-ColoredLine "[SUCCESS] Launched Process Explorer." Green
+    $process = Start-Process -FilePath $actualExe.FullName -PassThru
+    Start-Sleep -Seconds 1
+
+    $wshell = New-Object -ComObject wscript.shell
+    Start-Sleep -Milliseconds 500
+    $null = $wshell.AppActivate($process.Id)
+    Start-Sleep -Milliseconds 500
+    $wshell.SendKeys('% ')
+    Start-Sleep -Milliseconds 200
+    $wshell.SendKeys('x')
+    Start-Sleep -Milliseconds 500
+
+    Write-ColoredLine "[SUCCESS] Process Explorer window maximized." Green
+    Write-ColoredLine "[SUCCESS] Process Explorer launched successfully." Green
+    Write-Host ""
+
+    $process.WaitForExit()
+    Write-ColoredLine "[SUCCESS] Success Rate: 100% (1 / 1)." Green
+} else {
+    Write-ColoredLine "[FAILED] procexp64.exe was not found." Red
+    Write-ColoredLine "[SUCCESS] Success Rate: 0% (0 / 1)." Red
+}
 
 Write-ColoredLine "All steps completed. Log saved to: $LogFile" Green
 Show-Footer
