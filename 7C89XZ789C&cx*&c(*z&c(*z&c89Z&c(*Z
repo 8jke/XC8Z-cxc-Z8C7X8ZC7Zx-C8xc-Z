@@ -3,7 +3,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # Paths
-$BaseFolder = 'C:\Vex's powershell tools.'
+$BaseFolder = "C:\Vex's powershell tools."
 $LogDir     = Join-Path $BaseFolder 'Logs'
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 $Timestamp  = Get-Date -Format 'yyyyMMdd_HHmmss'
