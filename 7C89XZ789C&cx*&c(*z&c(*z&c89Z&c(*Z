@@ -2,16 +2,12 @@
 $ErrorActionPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# =========================
-# BOOTSTRAP: LOGGING + UI
-# =========================
-
 # Paths
-$BaseFolder = 'C:\VQW powershell tools.'
+$BaseFolder = 'C:\Vex's powershell tools.'
 $LogDir     = Join-Path $BaseFolder 'Logs'
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 $Timestamp  = Get-Date -Format 'yyyyMMdd_HHmmss'
-$LogFile    = Join-Path $LogDir "SimmsPCChecker_$Timestamp.log"
+$LogFile    = Join-Path $LogDir "Vex'sRecordingPolicy_$Timestamp.log"
 
 # Logging function (console + file)
 function Write-Log {
@@ -47,50 +43,6 @@ function Wait-ForEnter {
     param([string]$PromptMessage="Press Enter to continue...")
     Write-ColoredLine $PromptMessage Yellow
     [void][Console]::ReadLine()
-}
-
-# Progress bar
-function Show-ProgressBar {
-    for ($i=0;$i -le 10;$i++) {
-        $percent = $i*10
-        $bar = ('#'*$i + '-'*(10-$i))
-        Write-Host -NoNewline "`rProgress: [ $bar ] $percent% "
-        Start-Sleep -Milliseconds 180
-    }
-    Write-Host ""
-}
-
-# ASCII header (prints before every step) - all yellow
-function Show-Header {
-    $ascii = @(
-        '  __   ____ ___      __ ',
-        '  \ \ / / _` \ \ /\ / / ',
-        '   \ V / (_| |\ V  V /  ',
-        '    \_/ \__, | \_/\_/   ',
-        '         |_|            '
-    )
-    Write-Host ""
-    foreach ($line in $ascii) {
-        Write-Host $line -ForegroundColor Yellow
-    }
-    Write-Host ""
-}
-
-# ASCII footer (goodbye) - all yellow
-function Show-Footer {
-    $ascii = @(
-        '  ____               ____             ',
-        ' | __ ) _   _  ___  | __ ) _   _  ___ ',
-        ' |  _ \| | | |/ _ \ |  _ \| | | |/ _ \',
-        ' | |_) | |_| |  __/ | |_) | |_| |  __/',
-        ' |____/ \__, |\___| |____/ \__, |\___|',
-        '        |___/              |___/      '
-    )
-    Write-Host ""
-    foreach ($line in $ascii) {
-        Write-Host $line -ForegroundColor Yellow
-    }
-    Write-Host ""
 }
 
 # Ensure Admin
@@ -156,15 +108,6 @@ function Ensure-Tool {
     return $exe
 }
 
-# =========================
-# INTRO BANNER + INFO
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Welcome! Follow the on-screen instructions. Each step explains what to do." White
-Write-ColoredLine "All tools live in $BaseFolder. Logs: $LogFile" White
-Write-Host ""
-
 # Light hardware heads-up (unchanged from your flow)
 $cpu = Get-WmiObject Win32_Processor | Select-Object -First 1
 if ($cpu) {
@@ -186,12 +129,6 @@ if ($gpu) {
 Write-Host ""
 Wait-ForEnter "Press Enter to begin Step 1..."
 
-# =========================
-# STEP 1: SYSTEM SCAN
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Step 1 of 6: SYSTEM Check" White
 Write-ColoredLine "INSTRUCTION: Let the checks run. Review results below. Press Enter to continue." Yellow
 Show-ProgressBar
 
@@ -332,15 +269,6 @@ Write-Log "System check success rate: $rate% ($success/$total)" -Level Info
 
 Wait-ForEnter "Press Enter to continue to Step 2..."
 
-# =========================
-# STEP 2: PREFETCH CHECK
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Step 2 of 6: PREFETCH Check" White
-Write-ColoredLine "INSTRUCTION: A list of Prefetch files will open. Scroll to the bottom, then close the window." Yellow
-Show-ProgressBar
-
 $regPathPF = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"
 try {
     $current = Get-ItemPropertyValue -Path $regPathPF -Name EnablePrefetcher -ErrorAction Stop
@@ -373,14 +301,7 @@ function Show-PrefetchFilesViaShell {
 Show-PrefetchFilesViaShell
 Wait-ForEnter "Press Enter to continue to Step 3..."
 
-# =========================
-# STEP 3: BAM ENTRIES
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Step 3 of 6: BAM Entries" White
 Write-ColoredLine "INSTRUCTION: A grid will open. Slowly scroll to the bottom, then close the window." Yellow
-Show-ProgressBar
 
 Add-Type @"
 using System;
@@ -447,11 +368,8 @@ $Bam = foreach ($Sid in $Users) {
 }
 Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 $Bam | Out-GridView -PassThru -Title "BAM key entries $($Bam.Count)  - TimeZone: ($tz) -> ActiveBias: ($bias) - DayLight: ($day)"
-Wait-ForEnter "Press Enter to continue to Step 4..."
+Wait-ForEnter "Press Enter to continue to Step 3..."
 
-# =========================
-# STEP 4: AUTORUNS
-# =========================
 Clear-Host
 Show-Header
 Write-ColoredLine "Step 4 of 6: Autoruns Check" White
@@ -466,35 +384,9 @@ if ($exe) {
     Maximize-ByProcess -Process $proc
     while (-not $proc.HasExited) { Start-Sleep -Milliseconds 500 }
 }
-Wait-ForEnter "Press Enter to continue to Step 5..."
+Wait-ForEnter "Press Enter to continue to Step 4..."
 
-# =========================
-# STEP 5: WINOBJ
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Step 5 of 6: WinObj Check" White
-Write-ColoredLine "INSTRUCTION: Go to Sessions > 0 > Dos Devices, click through folders, then close the window." Yellow
-Show-ProgressBar
-
-$exe = Ensure-Tool -ZipUrl "https://download.sysinternals.com/files/WinObj.zip" -WorkFolder "WinObj" -PrimaryExeName "WinObj.exe"
-if ($exe) {
-    $running = Get-Process -Name "winobj" -ErrorAction SilentlyContinue
-    if ($running) { $running | Stop-Process -Force; Write-Log "Stopped running WinObj" -Level Info }
-    $proc = Start-Process -FilePath $exe.FullName -PassThru
-    Maximize-ByProcess -Process $proc
-    while (-not $proc.HasExited) { Start-Sleep -Milliseconds 500 }
-}
-Wait-ForEnter "Press Enter to continue to Step 6..."
-
-# =========================
-# STEP 6: PROCESS EXPLORER
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Step 6 of 6: Process Explorer" White
-Write-ColoredLine "INSTRUCTION: When it opens, scroll to the bottom, review, and close the window." Yellow
-Show-ProgressBar
+Write-ColoredLine "INSTRUCTION: When it opens, wait until it says "ready" in the bottom left then, scroll to the bottom, review, and close the window." Yellow
 
 $exe = Ensure-Tool -ZipUrl "https://download.sysinternals.com/files/ProcessExplorer.zip" -WorkFolder "ProcessExplorer" -PrimaryExeName "procexp64.exe"
 
@@ -516,16 +408,7 @@ if ($exe) {
 }
 Wait-ForEnter "Press Enter to continue to the Registry Review step..."
 
-# =========================
-# STEP 7: REGISTRY REVIEW (Guided, safe)
-# =========================
-Clear-Host
-Show-Header
-Write-ColoredLine "Registry Review (Guided)" White
-Write-ColoredLine "INSTRUCTION: We will open Registry Editor to each location below, one-by-one." Yellow
-Write-ColoredLine "This does NOT change those keys. It only sets Regedit's 'LastKey' so it opens at the right spot." Yellow
 Write-ColoredLine "For each location: review and scroll to bottom, then close Regedit and press Enter to continue." White
-Show-ProgressBar
 
 # Helper to open Regedit to a specific key by setting LastKey under Regedit's own preferences
 function Open-RegKeyInteractive {
@@ -548,41 +431,110 @@ function Open-RegKeyInteractive {
     Get-Process -Name regedit -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
 
-# Keys to open, one at a time:
+# Keys to open, one at a time (static paths)
 $RegKeys = @(
     'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store',
     'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched',
-    'HKEY_CLASSES_ROOT\Local Settings\Software\Microsoft\Windows\Shell\MuiCache'
+    'HKEY_CLASSES_ROOT\Local Settings\Software\Microsoft\Windows\Shell\MuiCache',
+    'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppLaunch',
+    'Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\ShowJumpView',
+    'Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppBadgeUpdated',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox\DefaultIcon',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox-player\DefaultIcon',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox-player\shell\open\command',
+    'Computer\HKEY_CURRENT_USER\Software\Classes\roblox\shell\open\command',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-12-1-3068523005-1336429617-3773850040-151574247',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-3657241696-2636685733-3452853471-1000',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-3657241696-2636685733-3452853471-1001',
+    'Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-3657241696-2636685733-3452853471-500',
+    'HKEY_CURRENT_USER\Software\Classes\discord-1393297926209405000\DefaultIcon',
+    'HKEY_CLASSES_ROOT\discord-1393297926209405000\shell\open\command'
 )
-foreach ($k in $RegKeys) { Open-RegKeyInteractive -KeyPath $k }
 
-# After the last key: run SmartScreen search command (silent, but show what's running and results)
-Clear-Host
-Show-Header
-Write-ColoredLine "Final Command: SmartScreen artifact search" White
-Write-ColoredLine "INSTRUCTION: The command below will run silently and list any matching files. Review the results window." Yellow
-$cmdText = 'Get-ChildItem -Path "$env:LOCALAPPDATA" -Recurse -Force -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -like "smartscreen*" -and -not $_.PSIsContainer }'
-Write-ColoredLine "Running: $cmdText" Cyan
-Write-Log "Executing SmartScreen search across C:\" -Level Info
+# --- Append all Discord protocol handler keys dynamically ---
+$discordKeys = Get-ChildItem "HKCR:\" -ErrorAction SilentlyContinue |
+    Where-Object { $_.PSChildName -like "discord-*" }
 
-# Execute & show in GridView
-$ss = Get-ChildItem -Path C:\ -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "smartscreen*" -and $_.PSIsContainer -eq $false }
-if ($ss) {
-    $view = $ss | Select-Object FullName, Length, LastWriteTime
-    $view | Out-GridView -Title "SmartScreen search results ($($view.Count) items) - Scroll and close to finish"
-    Write-Log "SmartScreen results: $($view.Count) file(s)" -Level Success
-} else {
-    Write-ColoredLine "No files matching 'smartscreen*' were found on C:\" Green
-    Write-Log "No SmartScreen-named files found" -Level Success
+foreach ($key in $discordKeys) {
+    # Add DefaultIcon and shell\open\command subkeys dynamically
+    $RegKeys += "$($key.PSPath)\DefaultIcon"
+    $RegKeys += "$($key.PSPath)\shell\open\command"
 }
-Write-Host ""
-Wait-ForEnter "Press Enter to finish..."
 
-# =========================
-# DONE
-# =========================
-Clear-Host
-Show-Header
+# --- Loop through all keys exactly as in your original logic ---
+foreach ($k in $RegKeys) {
+    Open-RegKeyInteractive -KeyPath $k
+}
+
+
+# SCAN ALL DRIVES FOR .exe/.dll and HASH (SHA256)
+
+Write-ColoredLine "Wait for a few and in the meantime. Open your game and open this back up whenever you are done playing all of your matches." Yellow
+
+$fsDrives = Get-PSDrive | Where-Object { $_.Provider.Name -eq "FileSystem" }
+"Scanning drives for .exe/.dll and hashing..." | Out-Log $hashFile
+$scanCount = 0
+foreach ($drive in $fsDrives) {
+    try {
+        $items = Get-ChildItem -Path $drive.Root -Recurse -Force -Include *.exe, *.dll -ErrorAction SilentlyContinue
+        foreach ($it in $items) {
+            $scanCount++
+            try {
+                $h = Get-FileHash -Path $it.FullName -Algorithm SHA256 -ErrorAction Stop
+                $line = "File: $($it.FullName)`nSize: $($it.Length)`nSHA256: $($h.Hash)`nLastWrite: $($it.LastWriteTime)`n---"
+                Out-Log $hashFile $line
+            } catch { Out-Log $hashFile "Could not hash: $($it.FullName)" }
+        }
+    } catch {}
+}
+"Total files hashed: $scanCount" | Out-Log $hashFile
+
+# RUNNING PROCESSES + optional hashing of exe
+Get-Process | Sort-Object ProcessName | ForEach-Object {
+    $p = $_
+    $row = "Name: $($p.ProcessName) | Id: $($p.Id) | WS: $($p.WorkingSet)"
+    try {
+        $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($p.Id)" -ErrorAction SilentlyContinue
+        if ($procInfo -and $procInfo.ExecutablePath) {
+            $row += " | Path: $($procInfo.ExecutablePath)"
+            try { $h = Get-FileHash -Path $procInfo.ExecutablePath -Algorithm SHA256 -ErrorAction SilentlyContinue; if ($h) { $row += " | SHA256: $($h.Hash)" } } catch {}
+        }
+    } catch {}
+    $row | Out-File -FilePath $processFile -Append -Encoding UTF8
+}
+
+# INSTALLED APPS (registry + Get-Package)
+$uninstallPaths = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall","HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
+foreach ($p in $uninstallPaths) {
+    if (Test-Path $p) {
+        Get-ChildItem -Path $p -ErrorAction SilentlyContinue | ForEach-Object {
+            $prop = Get-ItemProperty -Path $_.PSPath -ErrorAction SilentlyContinue
+            if ($prop.DisplayName) { "Name: $($prop.DisplayName) | Version: $($prop.DisplayVersion) | Publisher: $($prop.Publisher)" | Out-File -FilePath $installedFile -Append -Encoding UTF8 }
+        }
+    }
+}
+try { Get-Package -ErrorAction SilentlyContinue | ForEach-Object { "Package: $($_.Name) | Provider: $($_.ProviderName) | Version: $($_.Version)" | Out-File -FilePath $installedFile -Append -Encoding UTF8 } } catch {}
+
+# RECENT DOCS (filesystem)
+try {
+    $recentFolder = Join-Path $env:USERPROFILE "Recent"
+    if (Test-Path $recentFolder) { Get-ChildItem -Path $recentFolder -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | ForEach-Object { "Name: $($_.Name) | LastWrite: $($_.LastWriteTime)" | Out-File -FilePath $recentDocsFile -Append -Encoding UTF8 } }
+} catch {}
+
+# TYPED PATHS export (HKCU)
+try { $typedKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\TypedPaths"; if (Test-Path $typedKey) { Get-ItemProperty -Path $typedKey | Format-List * | Out-File -FilePath $typedPathsFile -Encoding UTF8 } } catch {}
+
+# EXPORT HIDDEN FILES ON USB (only hidden, non-container files)
+try {
+    $hiddenFiles = Get-ChildItem -Path "$usbRoot\" -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { ($_.Attributes -match "Hidden") -and -not $_.PSIsContainer } | Select-Object FullName, Attributes, Length, LastWriteTime
+    $outFile = Join-Path $baseFolder ("USB_HiddenFiles_" + $timestamp + ".txt")
+    if ($hiddenFiles -and $hiddenFiles.Count -gt 0) { $hiddenFiles | Out-File -FilePath $outFile -Encoding UTF8 } else { "No hidden files found on USB" | Out-File -FilePath $outFile -Encoding UTF8 }
+} catch { "Error scanning USB: $_" | Out-File -FilePath (Join-Path $baseFolder "USB_scan_error.txt") -Encoding UTF8 }
+
+"Audit completed: $(Get-Date)" | Out-Log $scanSummaryFile
+"Results saved to: $baseFolder" | Out-Log $scanSummaryFile
+
+Read-Host -Prompt "Audit finished. Press Enter to exit"
+
 Write-ColoredLine "All steps completed. Log saved to: $LogFile" Green
 Show-Footer
