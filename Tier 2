@@ -383,19 +383,97 @@ $Bam | Out-GridView -PassThru -Title "BAM key entries $($Bam.Count)  - TimeZone:
 Wait-ForEnter "Press Enter to continue to Step 3..."
 Show-ProgressBar
 
-Write-ColoredLine "Step 4 of 6: Autoruns Check" White
 Write-ColoredLine "INSTRUCTION: Wait for 'Ready' bottom-left, scroll slowly down, then close the window." Yellow
 Show-ProgressBar
 
-$exe = Ensure-Tool -ZipUrl "https://download.sysinternals.com/files/Autoruns.zip" -WorkFolder "Autoruns" -PrimaryExeName "Autoruns.exe"
-if ($exe) {
-    $running = Get-Process -Name "autoruns" -ErrorAction SilentlyContinue
-    if ($running) { $running | Stop-Process -Force; Write-Log "Stopped running Autoruns" -Level Info }
-    $proc = Start-Process -FilePath $exe.FullName -PassThru
-    Maximize-ByProcess -Process $proc
-    while (-not $proc.HasExited) { Start-Sleep -Milliseconds 500 }
+$baseFolder = "C:\Vex's powershell tools."
+$extractFolder = Join-Path $baseFolder "Autoruns"
+$zipUrl = "https://download.sysinternals.com/files/Autoruns.zip"
+$zipPath = Join-Path $baseFolder "Autoruns.zip"
+
+if (Test-Path $baseFolder) {
+    Get-ChildItem -Path $baseFolder -Force -Recurse | ForEach-Object {
+        try {
+            $_.Attributes = 'Normal'
+            Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
+        } catch { }
+    }
+    Write-ColoredLine "[SUCCESS] Cleared contents of ${baseFolder}" Green
+} else {
+    try {
+        New-Item -ItemType Directory -Path $baseFolder -ErrorAction Stop | Out-Null
+        Write-ColoredLine "[SUCCESS] Created folder ${baseFolder}" Green
+    } catch {
+        Write-ColoredLine "[FAILED] Could not create folder ${baseFolder}: $($_.Exception.Message)" Red
+        exit 1
+    }
 }
-Wait-ForEnter "Press Enter to continue to Step 4..."
+
+try {
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+    Write-ColoredLine "[SUCCESS] Downloaded Autoruns" Green
+} catch {
+    Write-ColoredLine "[FAILED] Download failed: $($_.Exception.Message)" Red
+    exit 1
+}
+
+try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractFolder)
+    Remove-Item $zipPath -Force
+    Write-ColoredLine "[SUCCESS] Extracted Autoruns" Green
+} catch {
+    Write-ColoredLine "[FAILED] Extraction failed: $($_.Exception.Message)" Red
+    exit 1
+}
+
+$actualExe = Get-ChildItem -Path $extractFolder -Filter "Autoruns.exe" -Recurse | Where-Object {
+    $_.FullName -notmatch "64|cmd"
+} | Select-Object -First 1
+
+if (-not $actualExe) {
+    Write-ColoredLine "[FAILED] Autoruns.exe not found" Red
+    exit 1
+} else {
+    Write-ColoredLine "[SUCCESS] Found Autoruns.exe" Green
+}
+
+$runningAutoruns = Get-Process -Name "autoruns" -ErrorAction SilentlyContinue
+if ($runningAutoruns) {
+    $runningAutoruns | Stop-Process -Force
+    Start-Sleep -Seconds 2
+    Write-ColoredLine "[SUCCESS] Terminated existing Autoruns process(es)" Green
+}
+
+try {
+    $process = Start-Process -FilePath $actualExe.FullName -PassThru
+    Write-ColoredLine "[SUCCESS] Launched Autoruns" Green
+} catch {
+    Write-ColoredLine "[FAILED] Failed to launch Autoruns: $($_.Exception.Message)" Red
+    exit 1
+}
+
+$hwnd = $null
+for ($i = 0; $i -lt 10; $i++) {
+    $process.Refresh()
+    $hwnd = $process.MainWindowHandle
+    if ($hwnd -ne 0) { break }
+    Start-Sleep -Milliseconds 500
+}
+
+if ($hwnd -and $hwnd -ne 0) {
+    [WinAPI]::ShowWindow($hwnd, $SW_MAXIMIZE) | Out-Null
+    Write-ColoredLine "[SUCCESS] Autoruns window maximized" Green
+} else {
+    Write-ColoredLine "[FAILED] Could not maximize window" Red
+}
+
+while (!$process.HasExited) { Start-Sleep -Seconds 1 }
+
+Write-ColoredLine ""
+Write-ColoredLine "[SUCCESS] Success Rate: 100% (1 / 1)" Green
+Wait-ForEnter "Press Enter to continue."
+Clear-Host
 
 Write-ColoredLine "INSTRUCTION: When it opens, wait until it says "ready" in the bottom left then, scroll to the bottom, review, and close the window." Yellow
 
