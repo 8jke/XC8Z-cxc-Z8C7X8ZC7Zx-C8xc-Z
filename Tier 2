@@ -135,6 +135,7 @@ if ($gpu) {
     if ($isGood) { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Green; Write-Host "Your GPU looks good." -ForegroundColor Green }
     else { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Yellow; Write-Host "GPU is fine; some views may be slower." -ForegroundColor Yellow }
 }
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Write-Host ""
 Wait-ForEnter "Press Enter to begin."
 Show-ProgressBar
@@ -277,6 +278,7 @@ Write-Host ""
 Write-Host ("Success Rate: $rate% ($success / $total)") -ForegroundColor $rateColor
 Write-Log "System check success rate: $rate% ($success/$total)" -Level Info
 
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press Enter to continue."
 Show-ProgressBar
 
@@ -310,6 +312,7 @@ function Show-PrefetchFilesViaShell {
     } catch { Write-Host "Failed to list Prefetch files." -ForegroundColor Yellow; Write-Log "Prefetch listing failed: $_" -Level Warning }
 }
 Show-PrefetchFilesViaShell
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press Enter to continue."
 Show-ProgressBar
 
@@ -472,6 +475,7 @@ while (!$process.HasExited) { Start-Sleep -Seconds 1 }
 
 Write-ColoredLine ""
 Write-ColoredLine "[SUCCESS] Success Rate: 100% (1 / 1)" Green
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press Enter to continue."
 Clear-Host
 
@@ -495,6 +499,7 @@ if ($exe) {
     Maximize-ByProcess -Process $proc
     while (-not $proc.HasExited) { Start-Sleep -Milliseconds 500 }
 }
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press Enter to continue."
 
 Write-ColoredLine "For each location: review and scroll to bottom, then close Regedit and press Enter to continue." White
@@ -555,6 +560,7 @@ foreach ($k in $RegKeys) {
     Open-RegKeyInteractive -KeyPath $k
 }
 
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press Enter to continue."
 
 Start-Job {
@@ -618,6 +624,8 @@ function Write-Section {
     }
 }
 
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
+Wait-ForEnter "Press enter to continue."
 Write-Host "A notepad will open. Scroll down on it then you may close"
 
 $OutputFile = "$env:TEMP\Hidden_Files_Report.txt"
@@ -633,6 +641,7 @@ Get-ChildItem -Path $Path -Recurse -Force -ErrorAction SilentlyContinue |
 
 Start-Process notepad.exe $OutputFile
 
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press enter to end the powershell command."
 Show-ProgressBar
 
