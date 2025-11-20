@@ -126,10 +126,11 @@ if ($gpu) {
     if ($isGood) { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Green; Write-Host "Your GPU looks good." -ForegroundColor Green }
     else { Write-Host "Detected GPU: $($gpu.Name)" -ForegroundColor Yellow; Write-Host "GPU is fine; some views may be slower." -ForegroundColor Yellow }
 }
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Write-Host ""
 Wait-ForEnter "Press Enter to begin tier 1."
 
-Write-ColoredLine "INSTRUCTION: Let the checks run. Review results below. Press Enter to continue." Yellow
+Write-ColoredLine "INSTRUCTION: Let the checks run. Review results below." Yellow
 Show-ProgressBar
 
 $modulesOutput = @()
@@ -267,6 +268,68 @@ Write-Host ""
 Write-Host ("Success Rate: $rate% ($success / $total)") -ForegroundColor $rateColor
 Write-Log "System check success rate: $rate% ($success/$total)" -Level Info
 
+Start-Job {
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+
+    function Show-ProcessActiveHistory {
+        $form = New-Object Windows.Forms.Form
+        $form.Text = "Process Active History"
+        $form.WindowState = 'Maximized'
+        $form.MinimumSize = New-Object Drawing.Size(800, 600)
+        $form.StartPosition = "CenterScreen"
+        $form.BackColor = [Drawing.Color]::White
+        $form.Topmost = $true
+
+        $listBox = New-Object Windows.Forms.ListBox
+        $listBox.Dock = 'Fill'
+        $listBox.Font = New-Object Drawing.Font("Consolas", 10)
+        $listBox.BackColor = [Drawing.Color]::White
+        $listBox.ForeColor = [Drawing.Color]::Black
+        $form.Controls.Add($listBox)
+
+        $seen = [System.Collections.Generic.HashSet[string]]::new()
+        $timer = New-Object Windows.Forms.Timer
+        $timer.Interval = 2000
+        $timer.Add_Tick({
+            $procs = Get-Process | Where-Object { $_.MainWindowTitle -or $_.ProcessName }
+            foreach ($p in $procs) {
+                $name = $p.ProcessName
+                if (-not $seen.Contains($name)) {
+                    $seen.Add($name) | Out-Null
+                    $stamp = Get-Date -Format "HH:mm:ss"
+                    $msg = "[$stamp] Opened: $name"
+                    $listBox.Invoke([action]{ $listBox.Items.Add($msg) }) | Out-Null
+                }
+            }
+        })
+        $timer.Start()
+        $form.Add_Shown({ $form.Activate() })
+        $form.Add_Closing({ $timer.Stop(); $timer.Dispose() })
+        [void] $form.ShowDialog()
+    }
+
+    Show-ProcessActiveHistory
+} | Out-Null
+
+# --- Print Results ---
+function Write-Section {
+    param ([string]$Title, [string[]]$Lines)
+    Write-Host "--- $Title ---" -ForegroundColor White
+    foreach ($line in $Lines) {
+        if ($line -match "^SUCCESS") {
+            Write-Host $line -ForegroundColor Green
+        } elseif ($line -match "^FAILURE") {
+            Write-Host $line -ForegroundColor Red
+        } elseif ($line -match "^WARNING") {
+            Write-Host $line -ForegroundColor Yellow
+        } else {
+            Write-Host $line -ForegroundColor White
+        }
+    }
+}
+
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Press Enter to continue."
 
 $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"
@@ -352,9 +415,10 @@ Write-Host ("Success Rate: $rate% ($successCounter / $totalSteps)") -ForegroundC
 # Wait for Enter
 function Wait-ForEnter {
  
-    Write-ColoredLine "Press Enter to continue..." Yellow 
+    Write-ColoredLine "Press Enter to continue." Yellow 
     [void][System.Console]::ReadLine()
 }
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter
 Clear-Host
 
@@ -438,9 +502,9 @@ if ($exe) {
     Maximize-ByProcess -Process $proc
     while (-not $proc.HasExited) { Start-Sleep -Milliseconds 500 }
 }
-Wait-ForEnter "Press Enter to continue."
 
-Wait-ForEnter "Press Enter to continue to the Registry Review step..."
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
+Wait-ForEnter "Press Enter to continue."
 
 Write-ColoredLine "For each location: review and scroll to bottom, then close Regedit and press Enter to continue." White
 
@@ -479,7 +543,8 @@ foreach ($k in $RegKeys) {
 
 Write-ColoredLine "a notepad will open. Scroll down to the bottom after opened." DarkMagenta
 
-Wait-ForEnter "Enter to continue"
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
+Wait-ForEnter "Enter to continue."
 
 $OutputFile = "$env:TEMP\Hidden_Files_Report.txt"
 
@@ -494,6 +559,7 @@ Get-ChildItem -Path $Path -Recurse -Force -ErrorAction SilentlyContinue |
 
 Start-Process notepad.exe $OutputFile
 
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
 Wait-ForEnter "Enter to end this"
 
 Write-ColoredLine "All steps completed. Log saved to: $LogFile" Green
