@@ -466,75 +466,7 @@ foreach ($k in $RegKeys) {
     Open-RegKeyInteractive -KeyPath $k
 }
 
-
-# SCAN ALL DRIVES FOR .exe/.dll and HASH (SHA256)
-
-Write-ColoredLine "Wait for a few and in the meantime. Open your game and open this back up whenever you are done playing all of your matches." Yellow
-
-$fsDrives = Get-PSDrive | Where-Object { $_.Provider.Name -eq "FileSystem" }
-"Scanning drives for .exe/.dll and hashing..." | Out-Log $hashFile
-$scanCount = 0
-foreach ($drive in $fsDrives) {
-    try {
-        $items = Get-ChildItem -Path $drive.Root -Recurse -Force -Include *.exe, *.dll -ErrorAction SilentlyContinue
-        foreach ($it in $items) {
-            $scanCount++
-            try {
-                $h = Get-FileHash -Path $it.FullName -Algorithm SHA256 -ErrorAction Stop
-                $line = "File: $($it.FullName)`nSize: $($it.Length)`nSHA256: $($h.Hash)`nLastWrite: $($it.LastWriteTime)`n---"
-                Out-Log $hashFile $line
-            } catch { Out-Log $hashFile "Could not hash: $($it.FullName)" }
-        }
-    } catch {}
-}
-"Total files hashed: $scanCount" | Out-Log $hashFile
-
-# RUNNING PROCESSES + optional hashing of exe
-Get-Process | Sort-Object ProcessName | ForEach-Object {
-    $p = $_
-    $row = "Name: $($p.ProcessName) | Id: $($p.Id) | WS: $($p.WorkingSet)"
-    try {
-        $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($p.Id)" -ErrorAction SilentlyContinue
-        if ($procInfo -and $procInfo.ExecutablePath) {
-            $row += " | Path: $($procInfo.ExecutablePath)"
-            try { $h = Get-FileHash -Path $procInfo.ExecutablePath -Algorithm SHA256 -ErrorAction SilentlyContinue; if ($h) { $row += " | SHA256: $($h.Hash)" } } catch {}
-        }
-    } catch {}
-    $row | Out-File -FilePath $processFile -Append -Encoding UTF8
-}
-
-# INSTALLED APPS (registry + Get-Package)
-$uninstallPaths = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall","HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
-foreach ($p in $uninstallPaths) {
-    if (Test-Path $p) {
-        Get-ChildItem -Path $p -ErrorAction SilentlyContinue | ForEach-Object {
-            $prop = Get-ItemProperty -Path $_.PSPath -ErrorAction SilentlyContinue
-            if ($prop.DisplayName) { "Name: $($prop.DisplayName) | Version: $($prop.DisplayVersion) | Publisher: $($prop.Publisher)" | Out-File -FilePath $installedFile -Append -Encoding UTF8 }
-        }
-    }
-}
-try { Get-Package -ErrorAction SilentlyContinue | ForEach-Object { "Package: $($_.Name) | Provider: $($_.ProviderName) | Version: $($_.Version)" | Out-File -FilePath $installedFile -Append -Encoding UTF8 } } catch {}
-
-# RECENT DOCS (filesystem)
-try {
-    $recentFolder = Join-Path $env:USERPROFILE "Recent"
-    if (Test-Path $recentFolder) { Get-ChildItem -Path $recentFolder -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | ForEach-Object { "Name: $($_.Name) | LastWrite: $($_.LastWriteTime)" | Out-File -FilePath $recentDocsFile -Append -Encoding UTF8 } }
-} catch {}
-
-# TYPED PATHS export (HKCU)
-try { $typedKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\TypedPaths"; if (Test-Path $typedKey) { Get-ItemProperty -Path $typedKey | Format-List * | Out-File -FilePath $typedPathsFile -Encoding UTF8 } } catch {}
-
-# EXPORT HIDDEN FILES ON USB (only hidden, non-container files)
-try {
-    $hiddenFiles = Get-ChildItem -Path "$usbRoot\" -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { ($_.Attributes -match "Hidden") -and -not $_.PSIsContainer } | Select-Object FullName, Attributes, Length, LastWriteTime
-    $outFile = Join-Path $baseFolder ("USB_HiddenFiles_" + $timestamp + ".txt")
-    if ($hiddenFiles -and $hiddenFiles.Count -gt 0) { $hiddenFiles | Out-File -FilePath $outFile -Encoding UTF8 } else { "No hidden files found on USB" | Out-File -FilePath $outFile -Encoding UTF8 }
-} catch { "Error scanning USB: $_" | Out-File -FilePath (Join-Path $baseFolder "USB_scan_error.txt") -Encoding UTF8 }
-
-"Audit completed: $(Get-Date)" | Out-Log $scanSummaryFile
-"Results saved to: $baseFolder" | Out-Log $scanSummaryFile
-
-Read-Host -Prompt "Audit finished. Press Enter to exit"
+Wait-ForEnter "Enter to end this"
 
 Write-ColoredLine "All steps completed. Log saved to: $LogFile" Green
 Show-Footer
