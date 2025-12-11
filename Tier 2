@@ -642,7 +642,13 @@ Get-ChildItem -Path $Path -Recurse -Force -ErrorAction SilentlyContinue |
 Start-Process notepad.exe $OutputFile
 
 Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
-Wait-ForEnter "Press enter to end the powershell command."
+Wait-ForEnter "Press Enter to continue."
+Show-ProgressBar
+
+Start-Process "resmon.exe"
+
+Write-Host "`rProgress: [ ########## ] 100% " -ForegroundColor White
+Wait-ForEnter "Press enter to finish."
 Show-ProgressBar
 
 Write-ColoredLine "All steps completed. Log saved to: $LogFile" Green
