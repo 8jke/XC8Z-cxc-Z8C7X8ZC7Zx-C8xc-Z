@@ -9,8 +9,8 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 
 # --- Display menu ---
 Clear-Host
-Write-Host "1. Tier 1" -ForegroundColor DarkMagenta
-Write-Host "2. Tier 2" -ForegroundColor DarkMagenta
+Write-Host "Press (1). Tier 1" -ForegroundColor DarkMagenta
+Write-Host "Press (2). Tier 2" -ForegroundColor DarkMagenta
 
 # --- Wait for input ---
 while ($true) {
